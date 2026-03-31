@@ -42,7 +42,7 @@ graph TD
     Cache --> A3(Agent 3: Write Tests)
     Cache --> A4(Agent 4: Update Docs)
     Cache --> A5(Agent 5: Fix Bugs)
-    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000000;
     class Cache cache;
 ```
 
@@ -122,8 +122,8 @@ graph LR
     B --> W1(Write A.ts)
     W1 --> W2(Write B.ts)
     W2 --> W3(Bash: npm run test)
-    classDef concurrent fill:#e1f5fe,stroke:#01579b;
-    classDef serial fill:#ffe0b2,stroke:#e65100;
+    classDef concurrent fill:#e1f5fe,stroke:#01579b,color:#000000;
+    classDef serial fill:#ffe0b2,stroke:#e65100,color:#000000;
     class R1,R2,R3 concurrent;
     class W1,W2,W3 serial;
 ```
