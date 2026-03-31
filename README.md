@@ -34,6 +34,12 @@ Analyzed thousands of lines of the original TypeScript to produce three extensiv
 * **The CLAUDE.md Cascade:** How the system re-compiles the context boundary dynamically on *every single turn*.
 * **YOLO Configuration:** Why you should turn Auto-Approve on for linting and formatting.
 
+### 4. [The Internals, Secrets, & Safegurds](./claude_code_internals.md)
+*Focuses on Corporate Espionage, Human Accountability, and Easter Eggs.*
+* **Undercover Mode:** How the agent scrubs unreleased codenames (`Capybara`, `Tengu`) from public GitHub PRs.
+* **Safeguard Approvals:** Hardcoded directives requiring explicit permission from named Anthropic security engineers.
+* **The Tamagotchi System:** A breakdown of the locally seeded `Mulberry32` PRNG that spawns `Pebblecrab` and `Cosmoshale` code companions with `SNARK` stats.
+
 ---
 
 ### Disclaimer
