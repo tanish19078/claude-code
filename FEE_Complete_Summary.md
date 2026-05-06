@@ -104,14 +104,14 @@
 
 ### JavaScript Output Methods
 
-| Method | Description |
-|--------|-------------|
-| `innerHTML` | Write HTML into an element |
-| `innerText` | Write plain text into an element |
-| `document.write()` | Write to HTML output (⚠️ overwrites page if used after load) |
-| `window.alert()` | Display alert box |
-| `console.log()` | Write to browser console (debugging) |
-| `window.print()` | Print current window content |
+| Method | Description | Returns |
+|--------|-------------|--------|
+| `innerHTML` | Read/write HTML into an element | `string` (when reading) |
+| `innerText` | Read/write plain text into an element | `string` (when reading) |
+| `document.write()` | Write to HTML output (⚠️ overwrites page if used after load) | `undefined` |
+| `window.alert()` | Display alert box | `undefined` |
+| `console.log()` | Write to browser console (debugging) | `undefined` |
+| `window.print()` | Print current window content | `undefined` |
 
 ### Chrome DevTools (F12 / Ctrl+Shift+I)
 
@@ -224,9 +224,13 @@ true + 1     // 2      (boolean → number)
 
 ### Explicit (Manual)
 ```js
-Number('5')   // 5
-String(10)    // '10'
-Boolean(1)    // true
+Number('5')        // 5        → Returns: number
+String(10)         // '10'     → Returns: string
+Boolean(1)         // true     → Returns: boolean
+parseInt("42px")   // 42       → Returns: number or NaN
+parseFloat("3.14") // 3.14     → Returns: number or NaN
+isNaN(NaN)         // true     → Returns: true / false
+isFinite(42)       // true     → Returns: true / false
 ```
 
 ### Falsy Values
@@ -370,7 +374,9 @@ function factorial(n) {
 ### Function Binding (`this`)
 - `this` refers to the object a method belongs to
 - In regular functions: refers to global object (`window`)
-- `bind()` creates a new function with a fixed `this` context
+- `bind(thisArg)` — **Returns:** a new function with `this` permanently bound
+- `call(thisArg, args...)` — **Returns:** result of the function call (invokes immediately)
+- `apply(thisArg, [args])` — **Returns:** result of the function call (invokes immediately)
 
 ### Arrow Functions & Lexical `this`
 
@@ -528,7 +534,7 @@ counter.getCount();  // 1
 
 ### setTimeout & setInterval — Deep Dive
 
-**`setTimeout(callback, delay)`** — executes the callback **once** after `delay` ms.
+**`setTimeout(callback, delay)`** — executes the callback **once** after `delay` ms. **Returns:** timeout ID (`number`).
 
 ```js
 // Basic usage
@@ -544,7 +550,7 @@ const id = setTimeout(() => console.log("Never runs"), 5000);
 clearTimeout(id);
 ```
 
-**`setInterval(callback, delay)`** — executes the callback **repeatedly** every `delay` ms.
+**`setInterval(callback, delay)`** — executes the callback **repeatedly** every `delay` ms. **Returns:** interval ID (`number`).
 
 ```js
 let count = 0;
@@ -604,36 +610,46 @@ let arr = [10, 20, 30, 40, 50];
 
 ### Basic Methods
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `length` | Number of elements | `[1,2,3].length` → `3` |
-| `toString()` | Array → comma-separated string | `[1,2,3].toString()` → `"1,2,3"` |
-| `at(index)` | Element at index (supports negative) | `[10,20,30].at(-1)` → `30` |
-| `join(sep)` | Join elements with separator | `["a","b"].join("-")` → `"a-b"` |
-| `pop()` | Remove & return **last** element | `arr.pop()` |
-| `push(val)` | Add to **end**, return new length | `arr.push(40)` |
-| `shift()` | Remove & return **first** element | `arr.shift()` |
-| `unshift(val)` | Add to **beginning** | `arr.unshift(0)` |
-| `delete` | Delete element (leaves `undefined` hole) | `delete arr[1]` |
+| Method | Description | Returns | Example |
+|--------|-------------|---------|--------|
+| `length` | Number of elements | `number` | `[1,2,3].length` → `3` |
+| `toString()` | Array → comma-separated string | `string` | `[1,2,3].toString()` → `"1,2,3"` |
+| `at(index)` | Element at index (supports negative) | Element or `undefined` | `[10,20,30].at(-1)` → `30` |
+| `join(sep)` | Join elements with separator | `string` | `["a","b"].join("-")` → `"a-b"` |
+| `pop()` | Remove **last** element | Removed element or `undefined` | `[1,2,3].pop()` → `3` |
+| `push(val)` | Add to **end** | New `length` (`number`) | `[1,2].push(3)` → `3` |
+| `shift()` | Remove **first** element | Removed element or `undefined` | `[1,2,3].shift()` → `1` |
+| `unshift(val)` | Add to **beginning** | New `length` (`number`) | `[0,1,2].unshift(-1)` → `4` |
+| `delete arr[i]` | Delete element (leaves `undefined` hole) | `true` / `false` | `delete arr[1]` → `true` |
 
 ### Manipulation Methods
 
-| Method | Description | Mutates? |
-|--------|-------------|----------|
-| `concat()` | Merge arrays → new array | ❌ |
-| `slice(start, end)` | Extract portion → new array | ❌ |
-| `splice(i, n, items)` | Add/remove elements in place | ✅ |
-| `toSpliced(i, n, items)` | Like splice → new array | ❌ |
-| `flat(depth)` | Flatten nested arrays | ❌ |
-| `copyWithin(target, start, end)` | Copy part to another position | ✅ |
+| Method | Description | Returns | Mutates? |
+|--------|-------------|---------|----------|
+| `concat()` | Merge arrays | New merged `Array` | ❌ |
+| `slice(start, end)` | Extract portion | New `Array` (shallow copy) | ❌ |
+| `splice(i, n, items)` | Add/remove elements in place | `Array` of **removed elements** (`[]` if none) | ✅ |
+| `toSpliced(i, n, items)` | Like splice but immutable | New `Array` | ❌ |
+| `flat(depth)` | Flatten nested arrays | New flattened `Array` | ❌ |
+| `copyWithin(target, start, end)` | Copy part to another position | The **modified array** (same ref) | ✅ |
+| `sort(compareFn)` | Sort elements in place | The **sorted array** (same ref) | ✅ |
+| `reverse()` | Reverse elements in place | The **reversed array** (same ref) | ✅ |
+| `toSorted(compareFn)` | Like sort but immutable | New sorted `Array` | ❌ |
+| `toReversed()` | Like reverse but immutable | New reversed `Array` | ❌ |
+| `fill(value, start, end)` | Fill with static value | The **modified array** (same ref) | ✅ |
+| `Array.isArray(val)` | Check if value is array | `true` / `false` | ❌ |
 
 ```js
 [1,2].concat([3,4]);            // [1,2,3,4]
 [1,2,3,4].slice(1,3);           // [2,3]
-arr.splice(1, 2, "a");          // removes 2 from index 1, inserts "a"
-arr.toSpliced(1, 1, "x");       // like splice but returns new array
+arr.splice(1, 2, "a");          // returns removed: e.g. [2,3]
+arr.toSpliced(1, 1, "x");       // returns new array
 [1,[2,[3]]].flat(2);            // [1,2,3]
 [1,2,3,4].copyWithin(0,2);     // [3,4,3,4]
+[3,1,2].sort();                 // [1,2,3] (mutates & returns same array)
+[1,2,3].reverse();              // [3,2,1] (mutates & returns same array)
+Array.isArray([1,2]);           // true
+Array.isArray("hello");         // false
 ```
 
 ### Search Methods
@@ -721,18 +737,26 @@ let obj = { [key]: 100 };  // { score: 100 }
 
 ### Object Methods
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `Object.keys(obj)` | Returns array of keys | `Object.keys({a:1, b:2})` → `["a","b"]` |
-| `Object.values(obj)` | Returns array of values | `Object.values({a:1, b:2})` → `[1, 2]` |
-| `Object.entries(obj)` | Returns `[key, value]` pairs | `Object.entries({a:1})` → `[["a",1]]` |
-| `Object.assign(target, src)` | Copy/merge properties | `Object.assign({}, obj1, obj2)` |
+| Method | Description | Returns |
+|--------|-------------|--------|
+| `Object.keys(obj)` | Get all keys | `Array` of strings |
+| `Object.values(obj)` | Get all values | `Array` of values |
+| `Object.entries(obj)` | Get key-value pairs | `Array` of `[key, value]` arrays |
+| `Object.assign(target, src)` | Copy/merge properties | The **target object** (modified) |
+| `Object.freeze(obj)` | Prevent all modifications | The **same object** (frozen) |
+| `Object.isFrozen(obj)` | Check if object is frozen | `true` / `false` |
+| `Object.create(proto)` | Create object with given prototype | New `Object` |
+| `delete obj.prop` | Delete a property | `true` / `false` |
+| `obj.hasOwnProperty(key)` | Check if own property exists | `true` / `false` |
 
 ```js
-Object.keys(person);      // ["name", "age", "email"]
-Object.values(person);    // ["Alice", 26, "alice@mail.com"]
-Object.entries(person);   // [["name","Alice"], ["age",26], ...]
-Object.assign({}, person); // Clone person
+Object.keys(person);       // ["name", "age", "email"]  → Array of strings
+Object.values(person);     // ["Alice", 26, "..."]     → Array of values
+Object.entries(person);    // [["name","Alice"], ...]   → Array of [key,value]
+Object.assign({}, person); // { ...clone }              → returns target object
+Object.freeze(person);     // person (now frozen — no add/edit/delete)
+delete person.city;        // true                      → boolean
+person.hasOwnProperty("name"); // true                  → boolean
 ```
 
 ---
@@ -785,10 +809,10 @@ let { x, ...rest } = { x: 10, y: 20, z: 30 };
 { "name": "John", "age": 30, "isStudent": false }
 ```
 
-| Method | Purpose | Example |
+| Method | Purpose | Returns |
 |--------|---------|---------|
-| `JSON.stringify(obj)` | Object → JSON string | `'{"name":"John","age":30}'` |
-| `JSON.parse(str)` | JSON string → Object | `{ name: "John", age: 30 }` |
+| `JSON.stringify(obj)` | Object → JSON string | `string` |
+| `JSON.parse(str)` | JSON string → Object | Parsed value (`Object`, `Array`, etc.) |
 
 ---
 
@@ -801,11 +825,11 @@ let { x, ...rest } = { x: 10, y: 20, z: 30 };
 
 | Method | Returns |
 |--------|---------|
-| `getElementById("id")` | Single element |
-| `getElementsByClassName("class")` | HTMLCollection by class name |
-| `getElementsByTagName("tag")` | HTMLCollection by tag name |
-| `querySelector("CSS selector")` | First matching element |
-| `querySelectorAll("CSS selector")` | NodeList (all matches) |
+| `getElementById("id")` | `Element` or `null` |
+| `getElementsByClassName("class")` | **Live** `HTMLCollection` (never `null`) |
+| `getElementsByTagName("tag")` | **Live** `HTMLCollection` (never `null`) |
+| `querySelector("CSS selector")` | First matching `Element` or `null` |
+| `querySelectorAll("CSS selector")` | **Static** `NodeList` (never `null`) |
 
 ```js
 const box = document.getElementById("box");
@@ -836,32 +860,37 @@ element.style.backgroundColor = "yellow";
 ### Creating, Appending & Deleting Nodes
 ```js
 // Create
-const div = document.createElement("div");
+const div = document.createElement("div");  // Returns: new Element
 div.textContent = "New Element";
 
 // Append
-document.body.appendChild(div);     // Append single node (returns node)
-document.body.append(div, "text");  // Append multiple nodes/strings
+document.body.appendChild(div);     // Returns: the appended Node
+document.body.append(div, "text");  // Returns: undefined
+document.body.prepend(div);         // Returns: undefined
+
+// Insert
+parent.insertBefore(newNode, refNode); // Returns: the inserted Node
 
 // Delete
-element.remove();
-// OR
-parent.removeChild(child);
+element.remove();                   // Returns: undefined
+parent.removeChild(child);          // Returns: the removed Node
+parent.replaceChild(newChild, old); // Returns: the replaced (old) Node
 ```
 
 ### Class Manipulation
 ```js
-element.classList.add("active");     // Add class
-element.classList.remove("active");  // Remove class
-element.classList.toggle("active");  // Toggle on/off
-element.classList.contains("active"); // Check → true/false
+element.classList.add("active");      // Returns: undefined
+element.classList.remove("active");   // Returns: undefined
+element.classList.toggle("active");   // Returns: true (added) / false (removed)
+element.classList.contains("active"); // Returns: true / false
 ```
 
 ### Attributes
 ```js
-element.setAttribute("data-id", "42");  // Set attribute
-element.getAttribute("data-id");        // Get → "42"
-element.removeAttribute("data-id");     // Remove attribute
+element.setAttribute("data-id", "42");  // Returns: undefined
+element.getAttribute("data-id");        // Returns: string or null
+element.removeAttribute("data-id");     // Returns: undefined
+element.hasAttribute("data-id");        // Returns: true / false
 ```
 
 ---
@@ -881,10 +910,23 @@ btn.addEventListener("click", function(event) {
 
 ### Event Methods
 
-| Method | Purpose |
-|--------|---------|
-| `preventDefault()` | Stop default browser action (e.g. form submit, link navigation) |
-| `stopPropagation()` | Stop event from bubbling/capturing further |
+| Method | Purpose | Returns |
+|--------|---------|--------|
+| `addEventListener(type, fn)` | Attach event handler | `undefined` |
+| `removeEventListener(type, fn)` | Remove event handler | `undefined` |
+| `preventDefault()` | Stop default browser action (e.g. form submit, link navigation) | `undefined` |
+| `stopPropagation()` | Stop event from bubbling/capturing further | `undefined` |
+| `stopImmediatePropagation()` | Stop all handlers + propagation | `undefined` |
+
+### Event Properties
+
+| Property | Returns |
+|----------|---------|
+| `event.target` | `Element` that **triggered** the event |
+| `event.currentTarget` | `Element` the **listener is attached to** |
+| `event.type` | `string` (e.g. `"click"`, `"submit"`) |
+| `event.key` | `string` (keyboard key pressed) |
+| `event.clientX` / `event.clientY` | `number` (mouse coordinates) |
 
 ### Event Propagation
 
@@ -965,18 +1007,18 @@ location.reload();  // Reload current page
 
 ### Pop-up Windows
 ```js
-window.open("https://example.com");
-window.close();
+window.open("https://example.com");  // Returns: Window object or null
+window.close();                       // Returns: undefined
 ```
 
 ### Timers
 
-| Method | Behavior |
-|--------|----------|
-| `setTimeout(fn, ms)` | Run **once** after delay |
-| `clearTimeout(id)` | Cancel a `setTimeout` |
-| `setInterval(fn, ms)` | Run **repeatedly** at interval |
-| `clearInterval(id)` | Stop an interval |
+| Method | Behavior | Returns |
+|--------|----------|--------|
+| `setTimeout(fn, ms)` | Run **once** after delay | Timeout ID (`number`) |
+| `clearTimeout(id)` | Cancel a `setTimeout` | `undefined` |
+| `setInterval(fn, ms)` | Run **repeatedly** at interval | Interval ID (`number`) |
+| `clearInterval(id)` | Stop an interval | `undefined` |
 
 ```js
 let tid = setTimeout(() => console.log("Hello"), 2000);
@@ -995,10 +1037,12 @@ clearInterval(iid);  // Stop it
 - Shared across tabs (same origin)
 
 ```js
-localStorage.setItem("key", "value");
-localStorage.getItem("key");
-localStorage.removeItem("key");
-localStorage.clear();
+localStorage.setItem("key", "value");   // Returns: undefined
+localStorage.getItem("key");            // Returns: string or null
+localStorage.removeItem("key");         // Returns: undefined
+localStorage.clear();                   // Returns: undefined
+localStorage.key(0);                    // Returns: key name (string) or null
+localStorage.length;                    // Returns: number of stored items
 ```
 
 ### SessionStorage (Temporary)
@@ -1006,8 +1050,10 @@ localStorage.clear();
 - NOT shared across tabs
 
 ```js
-sessionStorage.setItem("user", "Admin");
-sessionStorage.getItem("user");
+sessionStorage.setItem("user", "Admin");  // Returns: undefined
+sessionStorage.getItem("user");           // Returns: string or null
+sessionStorage.removeItem("user");        // Returns: undefined
+sessionStorage.clear();                   // Returns: undefined
 ```
 
 ### Cookies
