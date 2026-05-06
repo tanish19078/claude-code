@@ -372,6 +372,43 @@ function factorial(n) {
 - In regular functions: refers to global object (`window`)
 - `bind()` creates a new function with a fixed `this` context
 
+### Arrow Functions & Lexical `this`
+
+Arrow functions **do NOT have their own `this`**. They inherit `this` from the **enclosing (lexical) scope**.
+
+```js
+// ❌ Regular function — `this` is the global object (or undefined in strict mode)
+const person = {
+  name: "Alice",
+  greet: function() {
+    setTimeout(function() {
+      console.log(this.name);  // undefined! (`this` = window)
+    }, 1000);
+  }
+};
+
+// ✅ Arrow function — `this` is inherited from greet()
+const person2 = {
+  name: "Alice",
+  greet: function() {
+    setTimeout(() => {
+      console.log(this.name);  // "Alice" ✅ (lexical `this`)
+    }, 1000);
+  }
+};
+```
+
+**Key Differences:**
+
+| Feature | Regular Function | Arrow Function |
+|---------|-----------------|----------------|
+| `this` | Own `this` (depends on caller) | **Lexical** `this` (from enclosing scope) |
+| `arguments` | Has own `arguments` object | ❌ No `arguments` (use rest `...args`) |
+| Constructor | Can use `new` | ❌ Cannot use `new` |
+| Methods | ✅ Use for object methods | ❌ Avoid for object methods |
+
+> **Rule of thumb:** Use arrow functions for callbacks (e.g. `setTimeout`, `map`, `forEach`). Use regular functions for object methods and constructors.
+
 ---
 
 ## 9. Hoisting
@@ -422,6 +459,59 @@ counter(); // 2
 - **Function factories** — functions that return customized functions
 - **Callbacks & event handlers**
 
+### Function Factories (Closure Pattern)
+
+A function factory is a function that **returns a new function** customized by its arguments. Uses closures to "remember" the configuration.
+
+```js
+// Multiplier factory
+function createMultiplier(multiplier) {
+  return function(num) {
+    return num * multiplier;  // `multiplier` is remembered via closure
+  };
+}
+
+const double = createMultiplier(2);
+const triple = createMultiplier(3);
+
+double(5);  // 10
+triple(5);  // 15
+```
+
+```js
+// Greeting factory
+function greetFactory(greeting) {
+  return function(name) {
+    return `${greeting}, ${name}!`;
+  };
+}
+
+const sayHello = greetFactory("Hello");
+const sayNamaste = greetFactory("Namaste");
+
+sayHello("Alice");    // "Hello, Alice!"
+sayNamaste("Bob");    // "Namaste, Bob!"
+```
+
+```js
+// Private counter using closure
+function createCounter() {
+  let count = 0;  // private — not accessible from outside
+  return {
+    increment: () => ++count,
+    decrement: () => --count,
+    getCount: () => count
+  };
+}
+
+const counter = createCounter();
+counter.increment(); // 1
+counter.increment(); // 2
+counter.decrement(); // 1
+counter.getCount();  // 1
+// counter.count → undefined (private!)
+```
+
 ---
 
 ## 11. Higher-Order Functions
@@ -436,6 +526,72 @@ counter(); // 2
 | `forEach()` | Execute function for each element (no return) |
 | `setTimeout()` | Execute function after a delay (async) |
 
+### setTimeout & setInterval — Deep Dive
+
+**`setTimeout(callback, delay)`** — executes the callback **once** after `delay` ms.
+
+```js
+// Basic usage
+setTimeout(() => console.log("Runs after 2 seconds"), 2000);
+
+// With arguments (pass as extra params)
+setTimeout((name, age) => {
+  console.log(`${name} is ${age}`);
+}, 1000, "Alice", 25);  // "Alice is 25" after 1s
+
+// Cancel before it fires
+const id = setTimeout(() => console.log("Never runs"), 5000);
+clearTimeout(id);
+```
+
+**`setInterval(callback, delay)`** — executes the callback **repeatedly** every `delay` ms.
+
+```js
+let count = 0;
+const id = setInterval(() => {
+  count++;
+  console.log(`Tick ${count}`);
+  if (count === 5) clearInterval(id);  // Stop after 5 ticks
+}, 1000);
+```
+
+**⚠️ The `this` Problem with setTimeout:**
+```js
+const user = {
+  name: "Alice",
+  greet: function() {
+    // ❌ Regular function — `this` is lost inside setTimeout
+    setTimeout(function() {
+      console.log(this.name);  // undefined
+    }, 1000);
+
+    // ✅ Fix 1: Arrow function (lexical this)
+    setTimeout(() => {
+      console.log(this.name);  // "Alice"
+    }, 1000);
+
+    // ✅ Fix 2: bind()
+    setTimeout(function() {
+      console.log(this.name);  // "Alice"
+    }.bind(this), 1000);
+
+    // ✅ Fix 3: Store reference
+    const self = this;
+    setTimeout(function() {
+      console.log(self.name);  // "Alice"
+    }, 1000);
+  }
+};
+```
+
+**⏱️ setTimeout with 0ms delay:**
+```js
+console.log("1");                          // 1st
+setTimeout(() => console.log("2"), 0);     // 3rd (async — goes to task queue)
+console.log("3");                          // 2nd
+// Output: 1 → 3 → 2  (even with 0ms, setTimeout is async!)
+```
+
 ---
 
 ## 12. Arrays & Array Methods
@@ -446,29 +602,86 @@ An **array** is an ordered collection of values (any type), indexed from `0`.
 let arr = [10, 20, 30, 40, 50];
 ```
 
-### Key Array Methods
+### Basic Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `length` | Number of elements | `[1,2,3].length` → `3` |
+| `toString()` | Array → comma-separated string | `[1,2,3].toString()` → `"1,2,3"` |
+| `at(index)` | Element at index (supports negative) | `[10,20,30].at(-1)` → `30` |
+| `join(sep)` | Join elements with separator | `["a","b"].join("-")` → `"a-b"` |
+| `pop()` | Remove & return **last** element | `arr.pop()` |
+| `push(val)` | Add to **end**, return new length | `arr.push(40)` |
+| `shift()` | Remove & return **first** element | `arr.shift()` |
+| `unshift(val)` | Add to **beginning** | `arr.unshift(0)` |
+| `delete` | Delete element (leaves `undefined` hole) | `delete arr[1]` |
+
+### Manipulation Methods
+
+| Method | Description | Mutates? |
+|--------|-------------|----------|
+| `concat()` | Merge arrays → new array | ❌ |
+| `slice(start, end)` | Extract portion → new array | ❌ |
+| `splice(i, n, items)` | Add/remove elements in place | ✅ |
+| `toSpliced(i, n, items)` | Like splice → new array | ❌ |
+| `flat(depth)` | Flatten nested arrays | ❌ |
+| `copyWithin(target, start, end)` | Copy part to another position | ✅ |
+
+```js
+[1,2].concat([3,4]);            // [1,2,3,4]
+[1,2,3,4].slice(1,3);           // [2,3]
+arr.splice(1, 2, "a");          // removes 2 from index 1, inserts "a"
+arr.toSpliced(1, 1, "x");       // like splice but returns new array
+[1,[2,[3]]].flat(2);            // [1,2,3]
+[1,2,3,4].copyWithin(0,2);     // [3,4,3,4]
+```
+
+### Search Methods
 
 | Method | Description | Returns |
 |--------|-------------|---------|
+| `indexOf(val)` | First index of value | Index or `-1` |
+| `lastIndexOf(val)` | Last index of value | Index or `-1` |
+| `includes(val)` | Check if value exists | `true`/`false` |
+| `find(fn)` | First element passing test | Value or `undefined` |
+| `findIndex(fn)` | Index of first match | Index or `-1` |
+| `findLast(fn)` | **Last** element passing test | Value or `undefined` |
+| `findLastIndex(fn)` | Index of **last** match | Index or `-1` |
+
+### Iteration / Functional Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `forEach(fn)` | Run function per element | `undefined` |
 | `map(fn)` | Transform each element | New array |
 | `filter(fn)` | Keep elements passing condition | New array |
-| `reduce(fn, init)` | Accumulate to single value | Single value |
-| `forEach(fn)` | Run function per element | `undefined` |
-| `some(fn)` | Any element passes? | `true`/`false` |
+| `reduce(fn, init)` | Accumulate to single value (left→right) | Single value |
+| `reduceRight(fn, init)` | Accumulate (right→left) | Single value |
 | `every(fn)` | All elements pass? | `true`/`false` |
-| `find(fn)` | First matching element | Value or `undefined` |
-| `findIndex(fn)` | Index of first match | Index or `-1` |
+| `some(fn)` | Any element passes? | `true`/`false` |
+| `flatMap(fn)` | Map then flatten by 1 level | New array |
+
+### Utility Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `Array.from(iterable)` | Create array from iterable | `Array.from("hi")` → `["h","i"]` |
+| `keys()` | Iterator of indices | `[...arr.keys()]` |
+| `entries()` | Iterator of `[index, value]` | `[...arr.entries()]` |
+| `with(index, value)` | Replace at index → **new array** | `[1,2,3].with(1, 99)` → `[1,99,3]` |
 
 ```js
 let nums = [1, 2, 3, 4, 5];
 
-nums.map(x => x * 2);        // [2, 4, 6, 8, 10]
-nums.filter(x => x > 3);     // [4, 5]
-nums.reduce((s, x) => s + x, 0); // 15
-nums.some(x => x > 4);       // true
-nums.every(x => x > 0);      // true
-nums.find(x => x === 3);     // 3
-nums.findIndex(x => x === 3); // 2
+nums.map(x => x * 2);             // [2, 4, 6, 8, 10]
+nums.filter(x => x > 3);          // [4, 5]
+nums.reduce((s, x) => s + x, 0);  // 15
+nums.some(x => x > 4);            // true
+nums.every(x => x > 0);           // true
+nums.find(x => x === 3);          // 3
+nums.findIndex(x => x === 3);     // 2
+[1,2,3].flatMap(x => [x, x*2]);   // [1,2,2,4,3,6]
+["a","b","c"].reduceRight((s,x) => s+x, ""); // "cba"
 ```
 
 ---
@@ -506,6 +719,22 @@ let key = "score";
 let obj = { [key]: 100 };  // { score: 100 }
 ```
 
+### Object Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `Object.keys(obj)` | Returns array of keys | `Object.keys({a:1, b:2})` → `["a","b"]` |
+| `Object.values(obj)` | Returns array of values | `Object.values({a:1, b:2})` → `[1, 2]` |
+| `Object.entries(obj)` | Returns `[key, value]` pairs | `Object.entries({a:1})` → `[["a",1]]` |
+| `Object.assign(target, src)` | Copy/merge properties | `Object.assign({}, obj1, obj2)` |
+
+```js
+Object.keys(person);      // ["name", "age", "email"]
+Object.values(person);    // ["Alice", 26, "alice@mail.com"]
+Object.entries(person);   // [["name","Alice"], ["age",26], ...]
+Object.assign({}, person); // Clone person
+```
+
 ---
 
 ## 14. Destructuring
@@ -517,6 +746,9 @@ let [a, b, c] = [10, 20, 30];
 
 // Skip elements
 let [x, , z] = [1, 2, 3];  // x=1, z=3
+
+// Default values
+let [a = 10, b = 20] = [5];  // a=5, b=20
 
 // Rest operator
 let [first, ...rest] = [10, 20, 30, 40];
@@ -532,6 +764,9 @@ let { name, age } = { name: "Alice", age: 25, city: "London" };
 
 // Renaming
 let { name: fullName, age: years } = person;
+
+// Default values
+let { a = 10, b = 20 } = { a: 5 };  // a=5, b=20
 
 // Nested destructuring
 const { section1: { alpha } } = marks;
@@ -567,21 +802,27 @@ let { x, ...rest } = { x: 10, y: 20, z: 30 };
 | Method | Returns |
 |--------|---------|
 | `getElementById("id")` | Single element |
+| `getElementsByClassName("class")` | HTMLCollection by class name |
+| `getElementsByTagName("tag")` | HTMLCollection by tag name |
 | `querySelector("CSS selector")` | First matching element |
 | `querySelectorAll("CSS selector")` | NodeList (all matches) |
 
 ```js
 const box = document.getElementById("box");
+const items = document.getElementsByClassName("item"); // HTMLCollection
+const paras = document.getElementsByTagName("p");       // HTMLCollection
 const btn = document.querySelector(".btn");
-const items = document.querySelectorAll("li");
-items.forEach(item => console.log(item));
+const allLis = document.querySelectorAll("li");          // NodeList
+allLis.forEach(item => console.log(item));
 ```
 
 ### Reading & Writing Content
 ```js
 element.textContent            // Read plain text
+element.innerText              // Read visible text (respects CSS hiding)
 element.innerHTML              // Read HTML content
 element.textContent = "Hello"; // Write text
+element.innerText = "Hi";      // Write visible text
 element.innerHTML = "<b>Hi</b>"; // Write HTML (⚠️ XSS risk)
 ```
 
@@ -599,12 +840,28 @@ const div = document.createElement("div");
 div.textContent = "New Element";
 
 // Append
-document.body.appendChild(div);
+document.body.appendChild(div);     // Append single node (returns node)
+document.body.append(div, "text");  // Append multiple nodes/strings
 
 // Delete
 element.remove();
 // OR
 parent.removeChild(child);
+```
+
+### Class Manipulation
+```js
+element.classList.add("active");     // Add class
+element.classList.remove("active");  // Remove class
+element.classList.toggle("active");  // Toggle on/off
+element.classList.contains("active"); // Check → true/false
+```
+
+### Attributes
+```js
+element.setAttribute("data-id", "42");  // Set attribute
+element.getAttribute("data-id");        // Get → "42"
+element.removeAttribute("data-id");     // Remove attribute
 ```
 
 ---
@@ -615,10 +872,19 @@ parent.removeChild(child);
 ```js
 element.addEventListener("event", handlerFunction);
 
-btn.addEventListener("click", function() {
+btn.addEventListener("click", function(event) {
   alert("Clicked!");
+  console.log(event.target);        // Element that triggered the event
+  console.log(event.currentTarget); // Element the listener is attached to
 });
 ```
+
+### Event Methods
+
+| Method | Purpose |
+|--------|---------|
+| `preventDefault()` | Stop default browser action (e.g. form submit, link navigation) |
+| `stopPropagation()` | Stop event from bubbling/capturing further |
 
 ### Event Propagation
 
@@ -694,6 +960,7 @@ location.href       // Full URL
 location.hostname   // Domain name
 location.pathname   // Page path
 location.href = "https://google.com";  // Redirect
+location.reload();  // Reload current page
 ```
 
 ### Pop-up Windows
@@ -707,14 +974,16 @@ window.close();
 | Method | Behavior |
 |--------|----------|
 | `setTimeout(fn, ms)` | Run **once** after delay |
+| `clearTimeout(id)` | Cancel a `setTimeout` |
 | `setInterval(fn, ms)` | Run **repeatedly** at interval |
-| `clearInterval(id)` | Stop interval |
+| `clearInterval(id)` | Stop an interval |
 
 ```js
-setTimeout(() => console.log("Hello"), 2000);  // After 2s
+let tid = setTimeout(() => console.log("Hello"), 2000);
+clearTimeout(tid);  // Cancel it before it fires
 
-let id = setInterval(() => console.log("Tick"), 1000);
-clearInterval(id);  // Stop it
+let iid = setInterval(() => console.log("Tick"), 1000);
+clearInterval(iid);  // Stop it
 ```
 
 ---
@@ -758,6 +1027,525 @@ document.cookie = "age=22; expires=Fri, 31 Dec 2026 12:00:00 UTC";
 | Size | ~5-10 MB | ~5 MB | ~4 KB |
 | Sent to server | ❌ | ❌ | ✅ |
 | Shared across tabs | ✅ | ❌ | ✅ |
+
+---
+
+## 📋 Methods Covered in 1 Marks
+
+### 1. Array Methods
+
+#### 🔹 Basic Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `length` | Returns number of elements | `[1,2,3].length` → `3` |
+| `toString()` | Converts array to comma-separated string | `[1,2,3].toString()` → `"1,2,3"` |
+| `at(index)` | Returns element at index (supports negative) | `[10,20,30].at(-1)` → `30` |
+| `join(sep)` | Joins elements with separator | `["a","b"].join("-")` → `"a-b"` |
+| `pop()` | Removes & returns **last** element | `arr.pop()` |
+| `push(val)` | Adds element to **end**, returns new length | `arr.push(40)` |
+| `shift()` | Removes & returns **first** element | `arr.shift()` |
+| `unshift(val)` | Adds element to **beginning** | `arr.unshift(0)` |
+| `delete` | Deletes element (leaves `undefined` hole) | `delete arr[1]` |
+
+#### 🔹 Manipulation
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `concat()` | Merges arrays → new array | `[1,2].concat([3,4])` → `[1,2,3,4]` |
+| `slice(start, end)` | Extracts portion → new array (no mutation) | `[1,2,3,4].slice(1,3)` → `[2,3]` |
+| `splice(i, n, items)` | Add/remove elements **in place** (mutates) | `arr.splice(1, 2, "a")` |
+| `toSpliced(i, n, items)` | Like splice but returns **new array** (no mutation) | `arr.toSpliced(1, 1, "x")` |
+| `flat(depth)` | Flattens nested arrays | `[1,[2,[3]]].flat(2)` → `[1,2,3]` |
+| `copyWithin(target, start, end)` | Copies part of array to another position (mutates) | `[1,2,3,4].copyWithin(0,2)` → `[3,4,3,4]` |
+
+#### 🔹 Search Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `indexOf(val)` | First index of value (or `-1`) | `[1,2,3].indexOf(2)` → `1` |
+| `lastIndexOf(val)` | Last index of value (or `-1`) | `[1,2,1].lastIndexOf(1)` → `2` |
+| `includes(val)` | Checks if value exists | `[1,2,3].includes(2)` → `true` |
+| `find(fn)` | First element passing test | `[5,12,8].find(x => x > 10)` → `12` |
+| `findIndex(fn)` | Index of first element passing test | `[5,12,8].findIndex(x => x > 10)` → `1` |
+| `findLast(fn)` | **Last** element passing test | `[5,12,8,15].findLast(x => x > 10)` → `15` |
+| `findLastIndex(fn)` | Index of **last** element passing test | `[5,12,8,15].findLastIndex(x => x > 10)` → `3` |
+
+#### 🔹 Iteration Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `forEach(fn)` | Runs function for each element | `undefined` |
+| `map(fn)` | Transforms each element | New array |
+| `filter(fn)` | Keeps elements passing condition | New array |
+| `reduce(fn, init)` | Accumulates to single value (left→right) | Single value |
+| `reduceRight(fn, init)` | Accumulates to single value (right→left) | Single value |
+| `every(fn)` | All pass? | `true`/`false` |
+| `some(fn)` | Any pass? | `true`/`false` |
+| `flatMap(fn)` | Maps then flattens by 1 level | New array |
+
+```js
+// flatMap example
+[1, 2, 3].flatMap(x => [x, x * 2]);  // [1, 2, 2, 4, 3, 6]
+
+// reduceRight example
+[[1,2],[3,4],[5,6]].reduceRight((acc, val) => acc.concat(val), []);
+// [5, 6, 3, 4, 1, 2]
+```
+
+#### 🔹 Utility
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `Array.from(iterable)` | Creates array from iterable/array-like | `Array.from("hello")` → `["h","e","l","l","o"]` |
+| `keys()` | Returns iterator of indices | `[...arr.keys()]` → `[0,1,2]` |
+| `entries()` | Returns iterator of `[index, value]` pairs | `[...arr.entries()]` → `[[0,"a"],[1,"b"]]` |
+| `with(index, value)` | Replaces element at index → **new array** | `[1,2,3].with(1, 99)` → `[1,99,3]` |
+
+---
+
+### 2. Object Methods / Concepts
+
+**Object Literal:**
+```js
+let obj = { name: "Alice", age: 25 };
+```
+
+**Property Access:**
+```js
+obj.name        // Dot notation → "Alice"
+obj["name"]     // Bracket notation → "Alice"
+```
+
+**Dynamic Properties:**
+```js
+let key = "score";
+let obj = { [key]: 100 };  // { score: 100 }
+```
+
+**Methods:**
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `Object.keys(obj)` | Returns array of keys | `Object.keys({a:1, b:2})` → `["a","b"]` |
+| `Object.values(obj)` | Returns array of values | `Object.values({a:1, b:2})` → `[1, 2]` |
+| `Object.entries(obj)` | Returns array of `[key, value]` pairs | `Object.entries({a:1})` → `[["a",1]]` |
+| `Object.assign(target, src)` | Copies properties from src to target | `Object.assign({}, obj1, obj2)` |
+
+---
+
+### 3. Destructuring
+
+#### 🔹 Array Destructuring
+```js
+let [a, b] = [10, 20];          // a=10, b=20
+let [a, , b] = [1, 2, 3];       // a=1, b=3 (skip middle)
+let [a = 10] = [];               // a=10 (default value)
+let [x, y] = [1, 2]; [x, y] = [y, x];  // Swap → x=2, y=1
+```
+
+#### 🔹 Object Destructuring
+```js
+let { name } = obj;              // Extract name
+let { a: x } = { a: 10 };       // Rename: x=10
+let { a = 10 } = {};            // Default: a=10
+let { outer: { inner } } = obj; // Nested destructuring
+```
+
+---
+
+### 4. JSON Handling
+
+| Method | Purpose | Example |
+|--------|---------|---------|
+| `JSON.stringify(obj)` | Object → JSON string | `JSON.stringify({a:1})` → `'{"a":1}'` |
+| `JSON.parse(str)` | JSON string → Object | `JSON.parse('{"a":1}')` → `{a: 1}` |
+
+---
+
+### 5. DOM Manipulation
+
+#### 🔹 Selectors
+
+| Method | Returns |
+|--------|---------|
+| `querySelector("css")` | First matching element |
+| `querySelectorAll("css")` | NodeList of all matches |
+| `getElementById("id")` | Single element by ID |
+| `getElementsByClassName("cls")` | HTMLCollection by class |
+| `getElementsByTagName("tag")` | HTMLCollection by tag name |
+
+#### 🔹 Content & Style
+
+| Property/Method | Description |
+|----------------|-------------|
+| `innerHTML` | Gets/sets HTML content (parses tags) |
+| `innerText` | Gets/sets visible text content |
+| `style.property` | Sets inline CSS (`element.style.color = "red"`) |
+
+#### 🔹 Node Operations
+
+| Method | Description |
+|--------|-------------|
+| `createElement("tag")` | Creates a new HTML element |
+| `appendChild(node)` | Appends child at end (returns node) |
+| `append(nodes...)` | Appends multiple nodes/strings (no return) |
+| `remove()` | Removes the element from DOM |
+| `classList.add("cls")` | Adds a CSS class |
+| `classList.remove("cls")` | Removes a CSS class |
+| `classList.toggle("cls")` | Toggles a CSS class on/off |
+| `setAttribute("attr", "val")` | Sets an HTML attribute |
+| `getAttribute("attr")` | Gets an HTML attribute value |
+
+---
+
+### 6. Event Handling
+
+**addEventListener:**
+```js
+element.addEventListener("click", function(event) {
+  console.log(event.target);        // Element that triggered event
+  console.log(event.currentTarget); // Element listener is attached to
+});
+```
+
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `preventDefault()` | Stops default browser action (e.g. form submit) |
+| `stopPropagation()` | Stops event from bubbling/capturing further |
+
+**🔹 Concepts:**
+- **Event Bubbling** — event goes Child → Parent (default)
+- **Event Capturing** — event goes Parent → Child (`addEventListener("click", fn, true)`)
+- **Event Delegation** — single listener on parent, use `e.target` to identify child
+
+---
+
+### 7. BOM (Browser Object Model)
+
+#### 🔹 Window Methods
+
+| Method | Description |
+|--------|-------------|
+| `alert("msg")` | Shows alert dialog |
+| `confirm("msg")` | OK/Cancel dialog → returns `true`/`false` |
+| `prompt("msg")` | Input dialog → returns string or `null` |
+| `open(url)` | Opens new browser window/tab |
+| `close()` | Closes current window |
+
+#### 🔹 Timer Methods
+
+| Method | Description |
+|--------|-------------|
+| `setTimeout(fn, ms)` | Runs function **once** after delay |
+| `clearTimeout(id)` | Cancels a `setTimeout` |
+| `setInterval(fn, ms)` | Runs function **repeatedly** at interval |
+| `clearInterval(id)` | Cancels a `setInterval` |
+
+#### 🔹 Other Objects
+
+| Object/Property | Description |
+|----------------|-------------|
+| `navigator` | Browser info (`userAgent`, `language`, `onLine`) |
+| `location.href` | Full URL of current page |
+| `location.reload()` | Reloads current page |
+
+---
+
+### 8. Web Storage
+
+**localStorage** (persists after browser close):
+```js
+localStorage.setItem("key", "value");
+localStorage.getItem("key");
+localStorage.removeItem("key");
+localStorage.clear();
+```
+
+**sessionStorage** (deleted when tab closes):
+```js
+sessionStorage.setItem("user", "Admin");
+sessionStorage.getItem("user");
+```
+
+**Cookies** (sent to server with every HTTP request):
+```js
+document.cookie = "username=Rohan; expires=Fri, 31 Dec 2026 12:00:00 UTC";
+```
+
+---
+
+## 📋 Methods Covered in 2 Marks
+
+### 1. ARRAY (Methods & Concepts)
+
+#### 🔹 Core Methods
+```js
+arr.push(4);            // Add to end → [1,2,3,4]
+arr.pop();              // Remove from end → [1,2,3]
+arr.shift();            // Remove from start → [2,3]
+arr.unshift(0);         // Add to start → [0,2,3]
+
+arr.slice(1, 3);        // Extract [1,3) → new array, no mutation
+arr.splice(1, 2, "a");  // Remove 2 from index 1, insert "a" → mutates
+arr.toSpliced(1, 1, "x"); // Like splice → returns new array, no mutation
+
+[1,2].concat([3,4]);    // Merge → [1,2,3,4]
+[1,[2,[3]]].flat(Infinity); // Flatten all levels → [1,2,3]
+[1,2,3,4].copyWithin(0, 2); // Copy index 2+ to index 0 → [3,4,3,4]
+```
+
+#### 🔹 Iteration / Functional
+```js
+// map — transform each element → new array
+[1,2,3].map(x => x * 2);               // [2, 4, 6]
+
+// filter — keep elements passing test → new array
+[1,2,3,4,5].filter(x => x > 3);        // [4, 5]
+
+// reduce — accumulate to single value (left → right)
+[1,2,3].reduce((sum, x) => sum + x, 0); // 6
+
+// reduceRight — accumulate (right → left)
+["a","b","c"].reduceRight((s, x) => s + x, ""); // "cba"
+
+// forEach — execute function per element (no return value)
+[1,2,3].forEach(x => console.log(x));
+
+// some — does ANY element pass? → true/false
+[1,2,3].some(x => x > 2);              // true
+
+// every — do ALL elements pass? → true/false
+[1,2,3].every(x => x > 0);             // true
+
+// flatMap — map + flatten by 1 level
+[1, 2].flatMap(x => [x, x * 10]);      // [1, 10, 2, 20]
+```
+
+#### 🔹 Search
+```js
+[1,2,3,2].indexOf(2);       // 1  (first occurrence)
+[1,2,3,2].lastIndexOf(2);   // 3  (last occurrence)
+[1,2,3].includes(2);        // true
+
+[5,12,8].find(x => x > 10);          // 12  (first match)
+[5,12,8].findIndex(x => x > 10);     // 1   (index of first match)
+[5,12,8,15].findLast(x => x > 10);       // 15 (last match)
+[5,12,8,15].findLastIndex(x => x > 10);  // 3  (index of last match)
+```
+
+#### 🔹 Utility
+```js
+Array.from("hello");         // ["h","e","l","l","o"]
+Array.from({length: 3}, (_, i) => i); // [0, 1, 2]
+
+[...["a","b","c"].keys()];      // [0, 1, 2]
+[...["a","b","c"].entries()];   // [[0,"a"], [1,"b"], [2,"c"]]
+
+[1,2,3].with(1, 99);           // [1, 99, 3] — new array
+```
+
+---
+
+### 2. OBJECT (Methods & Concepts)
+
+```js
+// Object literal
+let person = { name: "Alice", age: 25 };
+
+// Access
+person.name;          // Dot → "Alice"
+person["name"];       // Bracket → "Alice"
+
+// Dynamic properties
+let key = "score";
+let obj = { [key]: 100 };  // { score: 100 }
+```
+
+#### 🔹 Methods
+```js
+Object.keys({a:1, b:2});      // ["a", "b"]
+Object.values({a:1, b:2});    // [1, 2]
+Object.entries({a:1, b:2});   // [["a",1], ["b",2]]
+Object.assign({}, obj1, obj2); // Merge/clone objects
+```
+
+---
+
+### 3. DESTRUCTURING
+
+#### 🔹 Array
+```js
+let [a, b] = [10, 20];           // a=10, b=20
+let [a, , b] = [1, 2, 3];        // a=1, b=3
+let [a = 10] = [];                // a=10 (default)
+let [x, y] = [1, 2];
+[x, y] = [y, x];                 // Swap → x=2, y=1
+```
+
+#### 🔹 Object
+```js
+let { name } = { name: "Alice", age: 25 };  // name="Alice"
+let { a: x } = { a: 10 };                   // x=10 (rename)
+let { a = 10 } = {};                        // a=10 (default)
+
+// Nested
+const { section: { alpha } } = { section: { alpha: 90 } };
+```
+
+---
+
+### 4. JSON HANDLING
+
+```js
+// Object → JSON string
+let jsonStr = JSON.stringify({ name: "John", age: 30 });
+// '{"name":"John","age":30}'
+
+// JSON string → Object
+let obj = JSON.parse('{"name":"John","age":30}');
+// { name: "John", age: 30 }
+```
+
+---
+
+### 5. DOM MANIPULATION
+
+#### 🔹 Selectors
+```js
+document.querySelector(".btn");            // First .btn element
+document.querySelectorAll("li");           // All <li> elements
+document.getElementById("box");           // Element with id="box"
+document.getElementsByClassName("item");   // All elements with class="item"
+document.getElementsByTagName("p");        // All <p> elements
+```
+
+#### 🔹 Content / Style
+```js
+element.innerHTML = "<b>Bold</b>";   // Set HTML content
+element.innerText = "Plain text";    // Set plain text
+element.style.color = "red";        // Set inline CSS
+element.style.backgroundColor = "#333";
+```
+
+#### 🔹 Node Operations
+```js
+// Create & append
+const div = document.createElement("div");
+div.textContent = "Hello";
+document.body.appendChild(div);   // Append single node
+document.body.append(div, "text"); // Append multiple nodes/strings
+
+// Remove
+element.remove();
+
+// Class manipulation
+element.classList.add("active");
+element.classList.remove("active");
+element.classList.toggle("active");  // Add if missing, remove if present
+
+// Attributes
+element.setAttribute("data-id", "42");
+element.getAttribute("data-id");     // "42"
+```
+
+---
+
+### 6. EVENT HANDLING
+
+#### 🔹 Methods
+```js
+element.addEventListener("click", handler);
+
+function handler(event) {
+  event.preventDefault();     // Stop default action
+  event.stopPropagation();   // Stop bubbling/capturing
+}
+```
+
+#### 🔹 Properties
+```js
+event.target;         // Element that TRIGGERED the event
+event.currentTarget;  // Element the LISTENER is attached to
+```
+
+#### 🔹 Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Event Bubbling** | Event propagates Child → Parent (default) |
+| **Event Capturing** | Event propagates Parent → Child (use `true` as 3rd arg) |
+| **Event Delegation** | Attach one listener to parent; use `e.target` to identify child |
+
+```js
+// Bubbling (default)
+child.addEventListener("click", fn);
+
+// Capturing
+parent.addEventListener("click", fn, true);
+
+// Delegation
+document.getElementById("list").addEventListener("click", (e) => {
+  if (e.target.tagName === "LI") {
+    console.log(e.target.textContent);
+  }
+});
+```
+
+---
+
+### 7. BOM (Browser Object Model)
+
+#### 🔹 Window Methods
+```js
+alert("Hello!");              // Message box
+let ok = confirm("Sure?");   // OK → true, Cancel → false
+let name = prompt("Name?");  // User input or null
+window.open("https://example.com");  // Open new tab
+window.close();              // Close current window
+```
+
+#### 🔹 Timers
+```js
+let tid = setTimeout(() => console.log("Once"), 2000);
+clearTimeout(tid);            // Cancel timeout
+
+let iid = setInterval(() => console.log("Repeat"), 1000);
+clearInterval(iid);           // Cancel interval
+```
+
+#### 🔹 Objects
+```js
+navigator.userAgent;    // Browser info string
+navigator.language;     // e.g. "en-US"
+navigator.onLine;       // true/false
+
+location.href;          // Full URL
+location.reload();      // Reload the page
+location.href = "https://google.com";  // Redirect
+```
+
+---
+
+### 8. WEB STORAGE
+
+```js
+// localStorage — persists permanently
+localStorage.setItem("key", "value");
+localStorage.getItem("key");       // "value"
+localStorage.removeItem("key");
+localStorage.clear();               // Remove all
+
+// sessionStorage — cleared on tab close
+sessionStorage.setItem("user", "Admin");
+sessionStorage.getItem("user");
+
+// Cookies — sent to server with every request
+document.cookie = "username=Rohan";
+document.cookie = "token=abc; expires=Fri, 31 Dec 2026 12:00:00 UTC";
+```
 
 ---
 
